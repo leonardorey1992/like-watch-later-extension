@@ -154,44 +154,72 @@ function addOptionNew(container, menuRoot) {
         // Find the native "Save to playlist" button in THIS specific menu
         const items = Array.from(container.querySelectorAll(NEW_ITEM_TAG));
 
-        // We look for the item that is likely "Save to playlist"
+        // Debug: Log all items to see what we are working with
+        // log('Items in menu:', items.map(i => i.innerText.replace(/\n/g, ' ')));
+
         const saveItem = items.find(item => {
             // CRITICAL: Ignore our own button!
             if (item.classList.contains(MENU_ITEM_CLASS) || item.innerText.includes(SAVE_TO_PLAYLIST_TEXT)) {
-                log('Skipping own injected item:', item.innerText);
                 return false;
             }
 
             const text = item.innerText.toLowerCase();
             const iconPath = item.querySelector('path')?.getAttribute('d');
 
-            // Check for "Save" keyword + "playlist" or just match the Bookmark icon path found in user snippet
-            const isSaveText = (text.includes('save') || text.includes('guardar') || text.includes('añadir')) &&
-                (text.includes('playlist') || text.includes('lista') || text.includes('ver más tarde') === false);
+            // EXCLUSIONS: specific words that mean "Queue" or "Watch Later" (native) or "Share"
+            if (text.includes('queue') || text.includes('cola') || text.includes('compartir') || text.includes('share')) return false;
 
-            const isSaveIcon = iconPath && (iconPath.startsWith('M19 2H5') || iconPath.startsWith('M14 10H3') || iconPath.startsWith('M22 13h-4'));
+            // MATCHERS
+            // 1. Aria Label (Strongest)
+            const ariaLabel = item.getAttribute('aria-label')?.toLowerCase() || '';
+            const isSaveAria = (ariaLabel.includes('save') || ariaLabel.includes('guardar') || ariaLabel.includes('añadir')) &&
+                (ariaLabel.includes('playlist') || ariaLabel.includes('lista'));
+
+            if (isSaveAria) {
+                item.dataset.matchReason = "aria";
+                return true;
+            }
+
+            // 2. Text Content
+            const hasActionWord = text.includes('save') || text.includes('guardar') || text.includes('añadir');
+            const hasTargetWord = text.includes('playlist') || text.includes('lista') || text.includes('list');
+
+            // Allow exact "Save" if it's not "Save to Watch Later" (which usually has "later" or "ver más tarde")
+            const isJustSave = text.trim() === 'save' || text.trim() === 'guardar';
+            const isNotWatchLater = !text.includes('later') && !text.includes('tarde');
+
+            const isSaveText = (hasActionWord && hasTargetWord) || (isJustSave && isNotWatchLater);
+
+            // 3. Icon Paths
+            // YouTube uses various icons for "save". Add more known paths if needed.
+            // M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z (playlist_add)
+            // M22 13h-4v-4h-2v4h-4v2h4v4h2v-4h4v-2z (another variant)
+            const isSaveIcon = iconPath && (
+                iconPath.startsWith('M19 2H5') ||
+                iconPath.startsWith('M17 3H7') ||
+                iconPath.includes('M14 10H2') || // playlist_add
+                iconPath.includes('M22 13h-4')   // plus icon often used
+            );
+
+            if (isSaveText) item.dataset.matchReason = "text";
+            if (isSaveIcon) item.dataset.matchReason = "icon";
 
             return isSaveText || isSaveIcon;
         });
 
         if (saveItem) {
-            log('Found Native Save Item (Lit), clicking...', saveItem.innerText);
+            log(`Found Native Save Item (Lit) via [${saveItem.dataset.matchReason}], clicking:`, saveItem.innerText.replace(/\n/g, ' '));
             saveItem.click();
             handlePlaylistDialog(playlistName);
         } else {
             console.error('[Private Watch Later] Could not find native "Save" button in Lit menu.');
+            log('Available items were:', items.map(i => i.innerText.replace(/\n/g, ' ')));
+            alert('Error: Could not find "Save to playlist" button. See console for details.');
 
-            // Fallback debug: print all items
-            log('Available items:', items.map(i => i.innerText));
-            alert('Error: Could not find "Save to playlist" button.');
+            // Only close manually if we FAILED to find the button
+            const popup = menuRoot.closest('tp-yt-iron-dropdown') || document.querySelector('ytd-popup-container');
+            if (popup) popup.click();
         }
-
-        // Close menu manually if needed (Lit menus might not close auto if we intercepted click?)
-        // Usually clicking the item closes it bc it is a semantic menu item. 
-        // If we prevented default, we might need to close it.
-        // Try finding the backdrop or just letting it be.
-        const popup = menuRoot.closest('tp-yt-iron-dropdown') || document.querySelector('ytd-popup-container');
-        if (popup) popup.click(); // Hacky close?
     });
 
     // Insert at top
@@ -247,8 +275,9 @@ function getPlaylistName() {
         chrome.storage.local.get({ [TARGET_PLAYLIST_KEY]: '' }, (items) => {
             let name = items[TARGET_PLAYLIST_KEY];
             if (!name) {
-                name = prompt('Enter the exact name of your private Watch Later playlist (case-sensitive):');
+                name = prompt('Enter the exact name of your private Watch Later playlist:');
                 if (name) {
+                    name = name.trim();
                     chrome.storage.local.set({ [TARGET_PLAYLIST_KEY]: name });
                 }
             }
@@ -258,58 +287,178 @@ function getPlaylistName() {
 }
 
 function handlePlaylistDialog(targetName) {
-    // Wait for ytd-add-to-playlist-renderer
-    const dialogObserver = new MutationObserver((mutations, obs) => {
-        const dialog = document.querySelector('ytd-add-to-playlist-renderer');
-        if (dialog && !dialog.hidden) {
-            obs.disconnect(); // Stop watching
-            log('Dialog appeared');
-            // Allow list to render
-            setTimeout(() => interactWithDialog(dialog, targetName), 500);
+    // Wait for the dialog to appear.
+    // It could be 'ytd-add-to-playlist-renderer', 'yt-add-to-playlist-view-model', or inside a 'tp-yt-paper-dialog'.
+    // Detection logic encapsulated
+    const checkDialog = (source) => {
+        // Broad search for ANY promising dialog container
+        const potentialDialogs = document.querySelectorAll('ytd-add-to-playlist-renderer, yt-add-to-playlist-view-model, tp-yt-paper-dialog, yt-confirm-dialog-renderer');
+
+        for (const dialog of potentialDialogs) {
+            // Check if it's visible
+            if (!dialog.hidden && dialog.offsetHeight > 0) {
+                // Check if it seems to contain playlist items.
+                // RELAXED CHECK: Don't check for "playlist" text as it fails in non-English (e.g. Spanish "Lista").
+                // Trust the tag name OR check for generic list items.
+                const hasItems = dialog.querySelector('ytd-playlist-add-to-option-renderer') ||
+                    dialog.querySelector('yt-playlist-add-to-option-view-model') ||
+                    dialog.querySelector('#items') ||
+                    dialog.querySelector('yt-list-item-view-model');
+
+                if (hasItems) {
+                    log(`Dialog detected via ${source} (found items):`, dialog.tagName);
+                    cleanup();
+                    // INCREASED DELAY: Wait 500ms (was 100ms) to ensure UI is stable/interactive
+                    setTimeout(() => interactWithDialog(dialog, targetName), 500);
+                    return true;
+                }
+
+                // Fallback: if it's the specific renderer we want, assume it's good even if empty briefly?
+                if (dialog.tagName.includes('ADD-TO-PLAYLIST')) {
+                    log(`Dialog detected via ${source} (tag match):`, dialog.tagName);
+                    cleanup();
+                    setTimeout(() => interactWithDialog(dialog, targetName), 100);
+                    return true;
+                }
+            }
         }
+        return false;
+    };
+
+    let pollInterval;
+    const cleanup = () => {
+        dialogObserver.disconnect();
+        if (pollInterval) clearInterval(pollInterval);
+    };
+
+    // 1. Observer
+    const dialogObserver = new MutationObserver((mutations) => {
+        checkDialog('Observer');
     });
 
     dialogObserver.observe(document.body, { childList: true, subtree: true });
 
-    // Safety timeout
-    setTimeout(() => dialogObserver.disconnect(), 10000);
+    // 2. Polling Fallback (Essential for resilience)
+    pollInterval = setInterval(() => {
+        if (checkDialog('Poll')) return;
+        // Optional: deeper debug log every 1s?
+    }, 200);
+
+    // check immediately just in case
+    setTimeout(() => checkDialog('Immediate'), 50);
+
+    // Timeout
+    setTimeout(() => {
+        cleanup();
+        log('Dialog wait timed out.');
+    }, 8000);
 }
 
-function interactWithDialog(dialog, targetName) {
-    // Determine if we need to verify checking status.
-    // The list items are usually ytd-playlist-add-to-option-renderer
-    const items = Array.from(dialog.querySelectorAll('ytd-playlist-add-to-option-renderer'));
+// Helper to find the scrollable list container
+function findListContainer(dialog) {
+    return dialog.querySelector('#playlists') ||
+        dialog.querySelector('ytd-playlist-add-to-option-renderer')?.parentElement ||
+        dialog.querySelector('yt-playlist-add-to-option-view-model')?.parentElement ||
+        dialog.querySelector('toggleable-list-item-view-model')?.parentElement || // Added for new Lit items
+        dialog.querySelector('#items');
+}
 
-    const targetItem = items.find(item => {
-        const title = item.querySelector('#label')?.title || item.innerText;
-        return title.trim().includes(targetName); // Loose match or strict? start with loose
-    });
+async function interactWithDialog(dialog, targetName) {
+    log('Interacting with dialog for:', targetName);
 
-    if (targetItem) {
-        const checkbox = targetItem.querySelector('#checkbox');
-        // Check if already checked?
-        const isChecked = checkbox.classList.contains('checked') || checkbox.getAttribute('aria-checked') === 'true';
+    const listContainer = findListContainer(dialog);
+    if (!listContainer) {
+        log('Could not find list container, trying naive search...');
+    }
+
+    // SCROLL AND SEARCH LOGIC
+    let attempts = 0;
+    const maxAttempts = 10; // Avoid infinite loops
+    let foundItem = null;
+
+    const normalize = (str) => str ? str.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+    const target = normalize(targetName);
+
+    while (attempts < maxAttempts) {
+        // 1. Scan current items
+        // User provided specific HTML: toggleable-list-item-view-model -> yt-list-item-view-model
+        const items = Array.from(dialog.querySelectorAll('ytd-playlist-add-to-option-renderer, yt-playlist-add-to-option-view-model, tp-yt-paper-checkbox, toggleable-list-item-view-model'));
+
+        foundItem = items.find(item => {
+            const titleEl = item.querySelector('#label') ||
+                item.querySelector('.yt-playlist-add-to-option-view-model__title') ||
+                item.querySelector('.yt-list-item-view-model__title') || // Found in user HTML
+                item.querySelector('.yt-core-attributed-string');
+            const title = normalize(titleEl?.textContent || item.innerText);
+            return title.includes(target);
+        });
+
+        if (foundItem) break;
+
+        // 2. If not found, try to scroll
+        if (listContainer && listContainer.scrollHeight > listContainer.clientHeight) {
+            log(`Item not found, scrolling... (attempt ${attempts + 1})`);
+            listContainer.scrollTop += 300; // Scroll down
+            await new Promise(r => setTimeout(r, 400)); // Wait for render
+            attempts++;
+        } else {
+            break;
+        }
+    }
+
+    if (foundItem) {
+        log('Found target playlist:', targetName);
+
+        // CHECKBOX LOGIC / STATE CHECK
+        // User HTML has `aria-pressed="false"` on the inner `yt-list-item-view-model`
+        const innerItem = foundItem.querySelector('yt-list-item-view-model') || foundItem;
+
+        const checkbox = foundItem.querySelector('#checkbox') ||
+            foundItem.querySelector('input[type="checkbox"]');
+
+        // Check state:
+        // 1. Classic checkbox .checked
+        // 2. Aria-checked
+        // 3. Aria-pressed (from user HTML)
+        const isChecked = (checkbox && checkbox.checked) ||
+            foundItem.classList.contains('checked') ||
+            foundItem.getAttribute('aria-checked') === 'true' ||
+            innerItem.getAttribute('aria-pressed') === 'true';
 
         if (!isChecked) {
-            log('Clicking target playlist:', targetName);
-            targetItem.click(); // This usually toggles it
+            log('Playlist unchecked. Clicking to add...');
+            // Pre-click safety delay as requested by user ("Wait a delay before clicking")
+            await new Promise(r => setTimeout(r, 200));
 
-            // Show feedback?
-            // YouTube usually shows a toast "Saved to [Playlist]"
+            // Click the clickable element. User said: "u need to click the this html element" -> toggleable-list-item-view-model matches well as host.
+            // But usually the check tap area is the row.
+            foundItem.click();
+
+            // Visual feedback
+            const originalBg = foundItem.style.backgroundColor;
+            foundItem.style.backgroundColor = '#e8f5e9'; // Light green flash
+            setTimeout(() => foundItem.style.backgroundColor = originalBg, 500);
+
+            // Close dialog after short delay to verify visual
+            setTimeout(() => {
+                const closeBtn = dialog.querySelector('#close-button') ||
+                    document.querySelector('yt-icon-button[icon="close"]');
+                if (closeBtn) closeBtn.click();
+                else document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            }, 800);
         } else {
-            log('Already saved to', targetName);
+            log('Playlist ALREADY checked (aria-pressed/checked). Doing nothing.');
+            // Close dialog immediately
+            const closeBtn = dialog.querySelector('#close-button') ||
+                document.querySelector('yt-icon-button[icon="close"]');
+            if (closeBtn) closeBtn.click();
         }
 
-        // Close dialog
-        // Is there a close button? usually #close-button
-        setTimeout(() => {
-            const closeBtn = dialog.querySelector('#close-button') || document.querySelector('yt-icon-button[icon="close"]');
-            if (closeBtn) closeBtn.click();
-            // Also try pressing Esc
-            else document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        }, 800);
-
     } else {
-        alert(`Playlist "${targetName}" not found in the list. Please check the name or create it first.`);
+        const items = Array.from(dialog.querySelectorAll('ytd-playlist-add-to-option-renderer, yt-playlist-add-to-option-view-model'));
+        const available = items.map(i => i.innerText.replace(/\n/g, ' ').trim()).join('\n');
+
+        console.error(`[Private Watch Later] Playlist "${targetName}" not found after scrolling.`);
+        alert(`Error: Playlist "${targetName}" not found.\n\nScanned playlists:\n${available}\n\nPlease check your playlist name.`);
     }
 }
