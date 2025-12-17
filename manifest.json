@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Like & Private Watch Later",
+  "version": "1.0",
+  "description": "Adds a 'Save to private watch later' option to YouTube menus.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content_script.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Extension Options",
+    "default_popup": "options.html"
+  }
+}

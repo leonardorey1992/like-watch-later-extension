@@ -1,0 +1,25 @@
+/* Style for the custom menu item */
+.yt-private-watch-later-item {
+    cursor: pointer;
+    font-family: "Roboto","Arial",sans-serif;
+    font-size: 1.4rem;
+    line-height: 2rem;
+    font-weight: 400;
+    padding: 0 16px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    color: var(--yt-spec-text-primary);
+}
+
+.yt-private-watch-later-item:hover {
+    background-color: var(--yt-spec-10-percent-layer);
+}
+
+/* Icon style if we add one later */
+.yt-private-watch-later-icon {
+    margin-right: 16px;
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
