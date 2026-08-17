@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Like & Private Watch Later",
-  "version": "1.0",
-  "description": "Adds a 'Save to private watch later' option to YouTube menus.",
+  "name": "Add to Playlist",
+  "version": "1.1",
+  "description": "Adds a one-click 'Add to <your playlist>' item to every YouTube video's 3-dot menu.",
   "permissions": [
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "*://*.youtube.com/*"

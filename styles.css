@@ -1,7 +1,7 @@
-/* Style for the custom menu item */
+/* Custom menu item injected into video 3-dot menus. */
 .yt-private-watch-later-item {
     cursor: pointer;
-    font-family: "Roboto","Arial",sans-serif;
+    font-family: "Roboto", "Arial", sans-serif;
     font-size: 1.4rem;
     line-height: 2rem;
     font-weight: 400;
@@ -10,16 +10,38 @@
     display: flex;
     align-items: center;
     color: var(--yt-spec-text-primary);
+    background: none;
+    border: none;
+    white-space: nowrap;
 }
 
 .yt-private-watch-later-item:hover {
     background-color: var(--yt-spec-10-percent-layer);
 }
 
-/* Icon style if we add one later */
-.yt-private-watch-later-icon {
-    margin-right: 16px;
-    width: 24px;
-    height: 24px;
-    fill: currentColor;
+/* Toast used for one-click feedback. */
+#yt-private-watch-later-toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 1.3rem;
+    z-index: 999999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#yt-private-watch-later-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+#yt-private-watch-later-toast.error {
+    background: rgba(197, 34, 31, 0.95);
 }
