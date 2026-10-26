@@ -127,28 +127,52 @@ function injectIntoOpenMenus() {
     });
 }
 
-function setStarIcon(item) {
-    const svg = item.querySelector('svg');
-    if (svg) {
-        // Keep the native icon wrapper so the star inherits its size and color.
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', STAR_PATH);
-        svg.replaceChildren(path);
-        return;
-    }
-
-    if (item.tagName === 'YT-LIST-ITEM-VIEW-MODEL') return;
-
-    // Legacy row: styles.css sizes/colors this direct SVG like the native icons.
+function makeStarSvg() {
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     icon.setAttribute('viewBox', '0 0 24 24');
-    icon.setAttribute('width', '24');
-    icon.setAttribute('height', '24');
     icon.setAttribute('aria-hidden', 'true');
+    icon.classList.add('yt-private-watch-later-star');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', STAR_PATH);
     icon.appendChild(path);
-    item.prepend(icon);
+    return icon;
+}
+
+function showStar(container) {
+    container.replaceChildren(makeStarSvg());
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.width = '24px';
+    container.style.minWidth = '24px';
+    container.style.height = '24px';
+    container.style.overflow = 'visible';
+    container.style.visibility = 'visible';
+    container.style.opacity = '1';
+}
+
+function setStarIcon(item) {
+    // Lit menus use yt-list-item-view-model. Some variants have no inline SVG
+    // (or hide the icon container), so build the star into the leading slot.
+    if (item.tagName === 'YT-LIST-ITEM-VIEW-MODEL') {
+        const leading = item.querySelector('.ytListItemViewModelImageContainer, .ytListItemViewModelLeading');
+        if (leading) {
+            showStar(leading);
+            return;
+        }
+
+        const textWrapper = item.querySelector('.ytListItemViewModelTextWrapper');
+        if (textWrapper) {
+            textWrapper.prepend(makeStarSvg());
+            textWrapper.style.display = 'flex';
+            textWrapper.style.alignItems = 'center';
+            textWrapper.style.gap = '12px';
+            return;
+        }
+    }
+
+    // Legacy row: styles.css sizes/colors this direct SVG like the native icons.
+    item.prepend(makeStarSvg());
 }
 
 function injectItem(list, menuRoot) {
