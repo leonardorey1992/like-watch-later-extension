@@ -4,7 +4,7 @@ This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENS
 That license permits personal and other noncommercial use only. Commercial use
 requires a separate written license from the copyright holder.
 
-Contact: <https://github.com/leonardorey1992>
+Contact: <minidevelopments+addfavytlist@gmail.com> or <https://github.com/leonardorey1992>
 
 Include:
 
