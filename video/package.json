@@ -5,7 +5,7 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts AddToPlaylistTutorial out/add-to-playlist-tutorial.mp4 --codec=h264 --crf=20 --pixel-format=yuv420p",
-    "poster": "remotion still src/index.ts AddToPlaylistTutorial out/poster.png --frame=585 --overwrite"
+    "poster": "remotion still src/index.ts AddToPlaylistTutorial out/poster.png --frame=640 --overwrite"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",

@@ -13,6 +13,7 @@ import {
 } from "./Icons";
 import {
   BrowserFrame,
+  CARD,
   Caption,
   ContextMenu,
   Cursor,
@@ -465,16 +466,17 @@ export const Use = () => {
   const highlight =
     frame >= 92 && frame < 154 ? 0.7 + 0.3 * Math.sin((frame - 92) / 6) : 0;
   const toastIn = pop(frame, 168, fps, 14, 120);
+  const checkIn = pop(frame, 168, fps, 14, 120);
 
   const p = at(frame, [
     { f: 0, x: 1260, y: 720 },
-    { f: 24, x: 900, y: 560 },
-    { f: 52, x: DOTS.x, y: DOTS.y + 44 },
-    { f: 85, x: DOTS.x, y: DOTS.y + 44 },
+    { f: 24, x: 1000, y: 600 },
+    { f: 52, x: 210 + DOTS.x, y: 64 + DOTS.y + 44 },
+    { f: 85, x: 210 + DOTS.x, y: 64 + DOTS.y + 44 },
     { f: 120, x: MENU_ITEM.x, y: MENU_ITEM.y + 44 },
     { f: 145, x: MENU_ITEM.x, y: MENU_ITEM.y + 44 },
-    { f: 175, x: 820, y: 600 },
-    { f: 220, x: 920, y: 700 },
+    { f: 175, x: 900, y: 600 },
+    { f: 220, x: 980, y: 700 },
     { f: 360, x: 1000, y: 720 },
   ]);
 
@@ -482,6 +484,27 @@ export const Use = () => {
     <SceneBackdrop>
       <BrowserFrame url="https://www.youtube.com" style={{ left: FRAME_LEFT, top: FRAME_TOP }}>
         <YouTubeHome spotlight={frame >= 38} />
+        <div
+          style={{
+            position: "absolute",
+            left: 210 + CARD.x + CARD.w - 56,
+            top: 64 + CARD.y + 14,
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            background: COLORS.green,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow:
+              "0 8px 22px rgba(24,128,56,0.35), 0 0 0 6px rgba(24,128,56,0.16)",
+            opacity: checkIn,
+            transform: `scale(${0.55 + checkIn * 0.45})`,
+            zIndex: 35,
+          }}
+        >
+          <CheckIcon size={24} color="#fff" />
+        </div>
         <ContextMenu progress={menuProgress} highlight={highlight} />
         <Toast progress={toastIn} />
       </BrowserFrame>

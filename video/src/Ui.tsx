@@ -30,9 +30,9 @@ import { clamp, COLORS, FONT } from "./theme";
 export const FRAME = { width: 1280, height: 760, topBar: 44 };
 export const CARD = { x: 242, y: 165, w: 300, thumbH: 169, gap: 26 };
 export const DOTS = { x: CARD.x + CARD.w - 20, y: CARD.y + CARD.thumbH + 76 };
-export const MENU = { x: 552, y: 372, w: 318, h: 344 };
+export const MENU = { x: 760, y: 372, w: 318, h: 344 };
 export const MENU_ITEM = { x: MENU.x + 158, y: MENU.y + 42 };
-export const TOAST = { x: 640, y: 638 };
+export const TOAST = { x: 640, y: 620 };
 export const EXT_ICON = { x: 1238, y: 22 };
 export const POPUP = { x: 922, y: 56, w: 338, h: 258 };
 export const POPUP_INPUT = { x: POPUP.x + 169, y: POPUP.y + 114 };
@@ -1057,38 +1057,42 @@ export const Toast = ({
   <div
     style={{
       position: "absolute",
-      left: TOAST.x - 156,
+      left: TOAST.x - 235,
       top: TOAST.y,
-      width: 312,
-      height: 54,
+      width: 470,
+      height: 76,
       borderRadius: 999,
-      background: "rgba(15,15,15,0.92)",
+      background: "rgba(15,15,15,0.94)",
       color: "#fff",
       display: "flex",
       alignItems: "center",
-      gap: 10,
-      padding: "0 20px",
-      boxShadow: "0 16px 40px rgba(0,0,0,0.28)",
+      gap: 15,
+      padding: "0 26px",
+      boxShadow:
+        "0 20px 55px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.06)",
       opacity: progress,
-      transform: `translateY(${(1 - progress) * 14}px) scale(${0.96 + progress * 0.04})`,
+      transform: `translateY(${(1 - progress) * 16}px) scale(${0.94 + progress * 0.06})`,
       fontFamily: FONT,
-      fontSize: 14,
-      fontWeight: 650,
+      fontSize: 21,
+      fontWeight: 700,
+      letterSpacing: "-0.015em",
       zIndex: 60,
     }}
   >
     <div
       style={{
-        width: 24,
-        height: 24,
+        width: 40,
+        height: 40,
         borderRadius: "50%",
         background: COLORS.green,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        boxShadow: "0 0 0 6px rgba(24,128,56,0.18)",
+        flex: "none",
       }}
     >
-      <CheckIcon size={16} color="#fff" />
+      <CheckIcon size={25} color="#fff" />
     </div>
     {text}
   </div>
