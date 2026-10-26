@@ -1,0 +1,23 @@
+{
+  "name": "add-to-playlist-video",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts AddToPlaylistTutorial out/add-to-playlist-tutorial.mp4 --codec=h264 --crf=20 --pixel-format=yuv420p",
+    "poster": "remotion still src/index.ts AddToPlaylistTutorial out/poster.png --frame=585 --overwrite"
+  },
+  "dependencies": {
+    "@fontsource/inter": "5.3.0",
+    "@remotion/transitions": "4.0.538",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.538",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.7.2"
+  }
+}
