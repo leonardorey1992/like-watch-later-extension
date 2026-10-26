@@ -19,6 +19,15 @@
     background-color: var(--yt-spec-10-percent-layer);
 }
 
+/* Star icon for the plain legacy row; the Lit clone keeps its native wrapper. */
+.yt-private-watch-later-item > svg {
+    width: 24px;
+    height: 24px;
+    margin-right: 16px;
+    fill: currentColor;
+    flex: none;
+}
+
 /* Toast used for one-click feedback. */
 #yt-private-watch-later-toast {
     position: fixed;

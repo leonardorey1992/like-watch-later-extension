@@ -8,33 +8,86 @@ const STORAGE_ID_KEY = 'targetPlaylistId';
 const MENU_ITEM_CLASS = 'yt-private-watch-later-item';
 const MENU_ITEM_ID = 'yt-private-watch-later-item';
 const MAX_PLAYLISTS = 500;
+const STAR_PATH = 'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z';
 
 // The video id of the menu most recently opened from a video context.
 let pendingVideoId = null;
-let pendingPlaylistLabel = '';
+
+const VIDEO_HOLDER_SELECTOR = [
+    'ytd-video-renderer',
+    'ytd-compact-video-renderer',
+    'ytd-rich-item-renderer',
+    'ytd-grid-video-renderer',
+    'ytd-playlist-panel-video-renderer',
+    'ytd-playlist-video-renderer',
+    'ytd-compact-radio-renderer',
+    'ytd-reel-item-renderer',
+    'ytd-reel-video-renderer',
+    'ytm-shorts-lockup-view-model',
+    'ytm-shorts-lockup-view-model-v2',
+    'yt-lockup-view-model',
+    '[data-video-id]',
+].join(', ');
 
 // ---------------------------------------------------------------------------
 // Video id capture: every 3-dot (and other menu) button click inside a video
 // renderer records that video's id so the menu we inject into knows what to add.
 // ---------------------------------------------------------------------------
+function videoIdFromHref(href) {
+    if (!href) return null;
+    const match = href.match(/[?&]v=([A-Za-z0-9_-]{11})/) || href.match(/\/shorts\/([A-Za-z0-9_-]{11})/);
+    return match ? match[1] : null;
+}
+
+function videoIdForElement(el) {
+    // On the watch page the current URL is authoritative (description links may
+    // point at other videos).
+    if (el.closest('ytd-watch-metadata, ytd-player, #movie_player')) {
+        if (location.pathname === '/watch') {
+            const watchId = new URLSearchParams(location.search).get('v');
+            if (watchId) return watchId;
+        }
+        const pathId = location.pathname.match(/^\/(?:shorts|live)\/([A-Za-z0-9_-]{11})/);
+        if (pathId) return pathId[1];
+    }
+
+    const holder = el.closest(VIDEO_HOLDER_SELECTOR);
+    if (!holder) return null;
+
+    const fromData = holder.getAttribute('data-video-id');
+    if (fromData) return fromData;
+
+    // Search results, grids, shelves and compact renderers expose the id via a link.
+    const link = holder.querySelector('a[href*="watch?v="], a[href*="/shorts/"]');
+    return videoIdFromHref(link?.getAttribute('href'));
+}
+
+function isActionMenuButton(button) {
+    if (button.closest('ytd-in-feed-ad-layout-renderer, ytd-ad-slot-renderer, .ytVideoAttributeViewModelOverflowMenu')) return false;
+    if (button.closest('.ytLockupMetadataViewModelMenuButton')) return true;
+
+    const label = (button.getAttribute('aria-label') || '').toLowerCase();
+    if (/action menu|more actions|más acciones|menú de acciones|mais ações|weitere aktionen|meer acties/.test(label)) return true;
+
+    // The more-vert glyph is the same in every UI language. Checking the glyph
+    // (instead of any button inside ytd-menu-renderer) keeps Share/Save out.
+    const path = button.querySelector('svg path')?.getAttribute('d') || '';
+    return path.startsWith('M12 4a2 2 0 100 4')
+        || path.startsWith('M6 10a2 2 0 100 4')
+        || path.startsWith('M12 8c1.1')
+        || path.startsWith('M12 16.5c');
+}
+
 document.addEventListener('click', (e) => {
+    // Clicking our own item must not overwrite the id captured when the menu opened.
+    if (e.target.closest('.' + MENU_ITEM_CLASS)) return;
+
     const button = e.target.closest('button, yt-icon-button');
     if (!button) return;
 
-    const videoEl = button.closest('[data-video-id]');
-    if (videoEl) {
-        pendingVideoId = videoEl.getAttribute('data-video-id');
-        return;
-    }
-
-    // Watch-page main menu lives inside ytd-watch-metadata / the player region.
-    if (location.pathname === '/watch' && button.closest('ytd-watch-metadata, ytd-player, #movie_player')) {
-        pendingVideoId = new URLSearchParams(location.search).get('v');
-        return;
-    }
-
-    // No video context — clear any stale id so we don't inject into unrelated menus.
-    pendingVideoId = null;
+    // Only a video's action-menu button carries a video id; any other button
+    // clears it so we don't inject into unrelated menus/sheets.
+    pendingVideoId = isActionMenuButton(button) ? videoIdForElement(button) : null;
 }, true);
 
 // ---------------------------------------------------------------------------
@@ -48,53 +101,83 @@ function scheduleInject() {
     setTimeout(() => { injectScheduled = false; injectIntoOpenMenus(); }, 400);
 }
 
-const injectedMenus = new WeakSet();
+function menuList(menu) {
+    // Classic menus: ytd-menu-popup-renderer. New context menus are sheets.
+    if (menu.tagName === 'YTD-MENU-POPUP-RENDERER') {
+        return menu.querySelector('yt-list-view-model, tp-yt-paper-listbox');
+    }
+    return menu.querySelector('yt-list-view-model[role="menu"]');
+}
 
 function injectIntoOpenMenus() {
     // Only touch menus when we know the video this menu belongs to.
     if (!pendingVideoId) return;
 
-    document.querySelectorAll('ytd-menu-popup-renderer').forEach((menu) => {
-        if (injectedMenus.has(menu)) return;
+    document.querySelectorAll('ytd-menu-popup-renderer, yt-sheet-view-model').forEach((menu) => {
+        // Only the open menu is rendered; skip cached/hidden popups.
+        if (!menu.getClientRects().length) return;
 
-        // New (Lit) menus use yt-list-view-model; legacy menus use tp-yt-paper-listbox.
-        const litList = menu.querySelector('yt-list-view-model');
-        const legacyList = menu.querySelector('tp-yt-paper-listbox');
+        // Skip menus that already have the item; re-inject if YouTube dropped it.
+        if (menu.querySelector('.' + MENU_ITEM_CLASS)) return;
 
-        const target = litList || legacyList;
+        const target = menuList(menu);
         if (!target) return;
 
-        injectedMenus.add(menu);
         injectItem(target, menu);
     });
 }
 
-async function injectItem(list, menuRoot) {
-    const item = document.createElement(list.tagName === 'YT-LIST-VIEW-MODEL'
-        ? 'yt-list-item-view-model'
-        : 'div');
-    item.id = MENU_ITEM_ID;
-    item.classList.add(MENU_ITEM_CLASS);
-
-    // New (Lit) item: clone structure from an existing item so it renders correctly.
-    if (list.tagName === 'YT-LIST-VIEW-MODEL') {
-        const existing = list.querySelector('yt-list-item-view-model');
-        if (!existing) return;
-        const clone = existing.cloneNode(true);
-        clone.id = MENU_ITEM_ID;
-        clone.classList.add(MENU_ITEM_CLASS);
-        const titleEl = clone.querySelector('.yt-list-item-view-model__title');
-        if (titleEl) titleEl.textContent = await menuLabel();
-        clone.addEventListener('click', (e) => handleClick(e, list, menuRoot));
-        list.prepend(clone);
+function setStarIcon(item) {
+    const svg = item.querySelector('svg');
+    if (svg) {
+        // Keep the native icon wrapper so the star inherits its size and color.
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', STAR_PATH);
+        svg.replaceChildren(path);
         return;
     }
 
-    // Legacy item: plain row styled by styles.css.
-    const title = await menuLabel();
-    const span = document.createElement('span');
-    span.textContent = title;
-    item.appendChild(span);
+    if (item.tagName === 'YT-LIST-ITEM-VIEW-MODEL') return;
+
+    // Legacy row: styles.css sizes/colors this direct SVG like the native icons.
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('width', '24');
+    icon.setAttribute('height', '24');
+    icon.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', STAR_PATH);
+    icon.appendChild(path);
+    item.prepend(icon);
+}
+
+function injectItem(list, menuRoot) {
+    // Current menus mix Lit items (yt-list-item-view-model) into legacy listboxes,
+    // so clone a Lit item whenever one exists for the native look.
+    const existing = list.querySelector('yt-list-item-view-model');
+    const item = existing ? existing.cloneNode(true) : document.createElement('div');
+    item.id = MENU_ITEM_ID;
+    item.classList.add(MENU_ITEM_CLASS);
+
+    if (existing) {
+        item.removeAttribute('aria-selected');
+        item.classList.remove('iron-selected', 'ytListItemViewModelHidden');
+        // Drop the cloned item's subtitle/trailing text (e.g. "Try Premium for $0").
+        item.querySelectorAll('.ytListItemViewModelSubtitleContainer, .ytListItemViewModelTrailingText')
+            .forEach((el) => el.remove());
+        item.querySelectorAll('.ytListItemViewModelHasSubtitle')
+            .forEach((el) => el.classList.remove('ytListItemViewModelHasSubtitle'));
+        setStarIcon(item);
+        const titleEl = item.querySelector('.yt-list-item-view-model__title, .ytListItemViewModelTitle');
+        if (titleEl) menuLabel().then((label) => { titleEl.textContent = label; });
+    } else {
+        // Legacy item: plain row styled by styles.css.
+        const span = document.createElement('span');
+        item.appendChild(span);
+        setStarIcon(item);
+        menuLabel().then((label) => { span.textContent = label; });
+    }
+
     item.addEventListener('click', (e) => handleClick(e, list, menuRoot));
     list.prepend(item);
 }
@@ -127,12 +210,12 @@ function handleClick(e, list, menuRoot) {
 }
 
 function closeMenu(menuRoot) {
-    const popup = menuRoot.closest('tp-yt-iron-dropdown') || menuRoot;
+    const dropdown = menuRoot.closest('tp-yt-iron-dropdown');
+    if (dropdown && typeof dropdown.close === 'function') {
+        dropdown.close();
+        return;
+    }
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
-    // Some menu versions need a second nudge.
-    setTimeout(() => {
-        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
-    }, 50);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,25 +232,33 @@ function getTarget() {
 
 // ---------------------------------------------------------------------------
 // InnerTube API
+// The request runs in YouTube's MAIN world (page_api.js): content scripts run in
+// an isolated world and cannot read the page's window.ytcfg.
 // ---------------------------------------------------------------------------
-function getInnerTubeConfig() {
-    const cfg = window.ytcfg?.data_ || {};
-    const apiKey = cfg.INNERTUBE_API_KEY;
-    const context = cfg.INNERTUBE_CONTEXT;
-    if (!apiKey || !context) throw new Error('YouTube config not ready — reload the page');
-    return { apiKey, context };
-}
+const PAGE_API_REQUEST = 'add-to-playlist:request';
+const PAGE_API_RESPONSE = 'add-to-playlist:response';
+let pageApiRequestId = 0;
 
-async function innerTubeCall(endpoint, body) {
-    const { apiKey, context } = getInnerTubeConfig();
-    const res = await fetch(`/youtubei/v1/${endpoint}?key=${apiKey}&prettyPrint=false`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context, ...body }),
+function innerTubeCall(endpoint, body) {
+    const requestId = ++pageApiRequestId;
+
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            window.removeEventListener('message', onMessage);
+            reject(new Error('YouTube API timeout'));
+        }, 15000);
+
+        function onMessage(e) {
+            if (e.source !== window || e.data?.type !== PAGE_API_RESPONSE || e.data.requestId !== requestId) return;
+            clearTimeout(timer);
+            window.removeEventListener('message', onMessage);
+            if (e.data.ok) resolve(e.data.data);
+            else reject(new Error(e.data.error || 'YouTube request failed'));
+        }
+
+        window.addEventListener('message', onMessage);
+        window.postMessage({ type: PAGE_API_REQUEST, requestId, endpoint, body }, '*');
     });
-    if (!res.ok) throw new Error(`YouTube API error (${res.status})`);
-    return res.json();
 }
 
 // Resolve the configured playlist (by stored id, else by name) to a playlist id.
@@ -190,8 +281,8 @@ async function addToPlaylist(videoId) {
     const target = await getTarget();
     const playlistId = await resolvePlaylistId(target);
     if (!playlistId) {
-        showToast('Configure a playlist in the extension options first', true);
-        chrome.runtime.openOptionsPage();
+        // chrome.runtime.openOptionsPage() is not available to content scripts.
+        showToast('Set a playlist from the extension icon first', true);
         return;
     }
 

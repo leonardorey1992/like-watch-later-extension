@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Add to Playlist",
-  "version": "1.1",
+  "version": "1.3",
   "description": "Adds a one-click 'Add to <your playlist>' item to every YouTube video's 3-dot menu.",
   "permissions": [
     "storage"
@@ -10,6 +10,12 @@
     "*://*.youtube.com/*"
   ],
   "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["page_api.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
     {
       "matches": ["*://*.youtube.com/*"],
       "js": ["content_script.js"],
