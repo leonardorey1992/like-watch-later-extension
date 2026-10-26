@@ -142,3 +142,11 @@ To test a change:
 Content scripts do not update in already-open tabs, so the page refresh is required. If the menu item still behaves like the old version, check that the extensions page shows the latest version and reload again.
 
 Bump the `version` in `manifest.json` when publishing a meaningful update.
+
+## License
+
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+Free for personal and other noncommercial use. Commercial use requires a
+separate license; see [COMMERCIAL.md](COMMERCIAL.md).
+
+Contributions are accepted under the [Contributor License Agreement](CLA.md).
