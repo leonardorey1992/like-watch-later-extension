@@ -793,7 +793,7 @@ export const Outro = () => {
             color: "rgba(255,255,255,0.34)",
           }}
         >
-          v1.3 · CHROME / BRAVE
+          v1.4 · CHROME / BRAVE
         </div>
       </div>
 

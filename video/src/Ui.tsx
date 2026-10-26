@@ -149,7 +149,7 @@ export const VersionPill = () => (
       fontFamily: FONT,
     }}
   >
-    v1.3
+    v1.4
   </div>
 );
 
@@ -799,7 +799,7 @@ export const ExtensionsPage = ({
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontSize: 18, fontWeight: 750 }}>Add to Playlist</span>
-            <span style={{ fontSize: 12, color: COLORS.muted }}>v1.3</span>
+            <span style={{ fontSize: 12, color: COLORS.muted }}>v1.4</span>
           </div>
           <div style={{ marginTop: 6, fontSize: 12.5, color: COLORS.muted, lineHeight: 1.5 }}>
             Adds a one-click "Add to &lt;your playlist&gt;" item to every YouTube video's 3-dot menu.
