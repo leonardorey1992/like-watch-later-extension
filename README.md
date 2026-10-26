@@ -12,6 +12,18 @@ No dialogs, no scrolling through YouTube's native "Save to playlist" flow. Pick 
 
 The demo uses a mock YouTube UI and shows the complete flow: install, choose a playlist, open a video's 3-dot menu, and click the starred item. See [`video/README.md`](video/README.md) to rebuild or edit it.
 
+## Quick start
+
+1. **Load the extension.** Open `chrome://extensions` or `brave://extensions`, enable **Developer mode**, click **Load unpacked**, and select this repository folder. See [Install](#install).
+2. **Sign in to YouTube** in the same browser profile.
+3. **Choose your playlist.** Click the Add to Playlist toolbar icon, enter a playlist name, URL or ID, and click **Save**. See [Configure your playlist](#configure-your-playlist).
+4. **Refresh the YouTube tab** so the content script picks up the saved playlist.
+5. **Open any video's 3-dot menu** on Home, Search, Watch or Shorts.
+6. **Click Add to &lt;your playlist&gt;**.
+7. **Confirm the green check** and the **Added to my playlist** toast.
+
+After editing the extension code, repeat the reload steps in [Reload after changes](#reload-after-changes).
+
 ## Requirements
 
 - A desktop Chromium-based browser: Chrome, Brave, Edge, etc.
@@ -64,7 +76,7 @@ The menu item reads **Add to &lt;playlist name&gt;** once configured. Before con
    - channel and playlist pages
    - Shorts and Shorts shelves
 3. Click **Add to &lt;your playlist&gt;**.
-4. Wait for the confirmation toast: **Added to playlist**.
+4. Wait for the green check and the confirmation toast: **Added to my playlist**.
 
 The video is added directly through YouTube's own internal API, using your existing signed-in session.
 
@@ -119,5 +131,14 @@ To test a change:
 2. Reload the extension in `chrome://extensions` or `brave://extensions`.
 3. Refresh the YouTube tab.
 4. Open a video's 3-dot menu and try the item.
+
+### Reload after changes
+
+1. Open `chrome://extensions` or `brave://extensions`.
+2. Find **Add to Playlist** and click **Reload**.
+3. Refresh every open YouTube tab.
+4. Reopen the video's 3-dot menu.
+
+Content scripts do not update in already-open tabs, so the page refresh is required. If the menu item still behaves like the old version, check that the extensions page shows the latest version and reload again.
 
 Bump the `version` in `manifest.json` when publishing a meaningful update.
