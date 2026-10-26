@@ -467,6 +467,7 @@ export const Use = () => {
     frame >= 92 && frame < 154 ? 0.7 + 0.3 * Math.sin((frame - 92) / 6) : 0;
   const toastIn = pop(frame, 168, fps, 14, 120);
   const checkIn = pop(frame, 168, fps, 14, 120);
+  const cursorVisible = interpolate(frame, [168, 176], [1, 0], clamp);
 
   const p = at(frame, [
     { f: 0, x: 1260, y: 720 },
@@ -512,6 +513,7 @@ export const Use = () => {
       <CursorLayer
         x={p.x}
         y={p.y}
+        visible={cursorVisible}
         ripple={Math.max(rippleAt(frame, 60), rippleAt(frame, 150))}
       />
 

@@ -32,7 +32,7 @@ export const CARD = { x: 242, y: 165, w: 300, thumbH: 169, gap: 26 };
 export const DOTS = { x: CARD.x + CARD.w - 20, y: CARD.y + CARD.thumbH + 76 };
 export const MENU = { x: 760, y: 372, w: 318, h: 344 };
 export const MENU_ITEM = { x: MENU.x + 158, y: MENU.y + 42 };
-export const TOAST = { x: 640, y: 620 };
+export const TOAST = { x: 640, y: 520 };
 export const EXT_ICON = { x: 1238, y: 22 };
 export const POPUP = { x: 922, y: 56, w: 338, h: 258 };
 export const POPUP_INPUT = { x: POPUP.x + 169, y: POPUP.y + 114 };
@@ -1049,7 +1049,7 @@ export const ContextMenu = ({
 
 export const Toast = ({
   progress,
-  text = "Added to playlist",
+  text = "Added to my playlist",
 }: {
   progress: number;
   text?: string;
@@ -1057,42 +1057,45 @@ export const Toast = ({
   <div
     style={{
       position: "absolute",
-      left: TOAST.x - 235,
+      left: TOAST.x - 620,
       top: TOAST.y,
-      width: 470,
-      height: 76,
-      borderRadius: 999,
+      width: 1240,
+      height: 180,
+      borderRadius: 96,
       background: "rgba(15,15,15,0.94)",
       color: "#fff",
       display: "flex",
       alignItems: "center",
-      gap: 15,
-      padding: "0 26px",
+      justifyContent: "center",
+      gap: 24,
+      padding: "0 40px",
       boxShadow:
-        "0 20px 55px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.06)",
+        "0 30px 80px rgba(0,0,0,0.36), 0 0 0 1px rgba(255,255,255,0.07)",
       opacity: progress,
-      transform: `translateY(${(1 - progress) * 16}px) scale(${0.94 + progress * 0.06})`,
+      transform: `translateY(${(1 - progress) * 20}px) scale(${0.94 + progress * 0.06})`,
       fontFamily: FONT,
-      fontSize: 21,
-      fontWeight: 700,
-      letterSpacing: "-0.015em",
+      fontSize: 105,
+      lineHeight: 1,
+      fontWeight: 800,
+      letterSpacing: "-0.045em",
+      whiteSpace: "nowrap",
       zIndex: 60,
     }}
   >
     <div
       style={{
-        width: 40,
-        height: 40,
+        width: 80,
+        height: 80,
         borderRadius: "50%",
         background: COLORS.green,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 0 0 6px rgba(24,128,56,0.18)",
+        boxShadow: "0 0 0 12px rgba(24,128,56,0.18)",
         flex: "none",
       }}
     >
-      <CheckIcon size={25} color="#fff" />
+      <CheckIcon size={46} color="#fff" />
     </div>
     {text}
   </div>

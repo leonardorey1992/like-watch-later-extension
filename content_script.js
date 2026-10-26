@@ -200,7 +200,7 @@ function handleClick(e, list, menuRoot) {
 
     addToPlaylist(videoId)
         .then(() => {
-            showToast('Added to playlist');
+            showToast('Added to my playlist');
             closeMenu(menuRoot);
         })
         .catch((err) => {
@@ -382,9 +382,22 @@ function showToast(message, isError = false) {
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'yt-private-watch-later-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
         document.body.appendChild(toast);
     }
-    toast.textContent = message;
+
+    const icon = document.createElement('span');
+    icon.className = 'yt-private-watch-later-toast-icon';
+    icon.innerHTML = isError
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 7h2v6h-2V7Zm0 8h2v2h-2v-2Z"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>';
+
+    const text = document.createElement('span');
+    text.className = 'yt-private-watch-later-toast-text';
+    text.textContent = message;
+
+    toast.replaceChildren(icon, text);
     toast.classList.toggle('error', isError);
     toast.classList.add('visible');
 
