@@ -325,13 +325,14 @@ async function addToPlaylist(videoId) {
 }
 
 // Asks YouTube's own save-to-playlist data whether the video is already in the
-// playlist (same `selected` flag its "Save" dialog shows).
+// playlist. Each option carries `containsSelectedVideos: 'ALL' | 'NONE'`
+// (YouTube's "Save" dialog checkmark).
 // shortcut: only reads the first page of playlists, which covers all normal
 // accounts; paginate if someone has hundreds of playlists.
 async function isInPlaylist(playlistId, videoId) {
     try {
         const data = await innerTubeCall('playlist/get_add_to_playlist', { videoIds: [videoId] });
-        let selected = false;
+        let match = null;
 
         (function scan(node) {
             if (!node || typeof node !== 'object') return;
@@ -339,13 +340,15 @@ async function isInPlaylist(playlistId, videoId) {
                 node.forEach(scan);
                 return;
             }
-            const id = node.playlistId || node.serviceEndpoint?.playlistEditEndpoint?.playlistId;
-            if (id === playlistId && node.selected === true) selected = true;
+            if (node.playlistAddToOptionRenderer?.playlistId === playlistId) {
+                match = node.playlistAddToOptionRenderer;
+            }
             Object.values(node).forEach(scan);
         })(data);
 
-        return selected;
-    } catch {
+        return match?.containsSelectedVideos === 'ALL';
+    } catch (err) {
+        console.warn('[add-to-playlist] membership check failed, adding anyway', err);
         return false; // Fail open: still try the add.
     }
 }
