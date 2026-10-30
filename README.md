@@ -77,6 +77,7 @@ The menu item reads **Add to &lt;playlist name&gt;** once configured. Before con
    - Shorts and Shorts shelves
 3. Click **Add to &lt;your playlist&gt;**.
 4. Wait for the green check and the confirmation toast: **Added to my playlist**.
+   If the video is already in that playlist, nothing is sent and the toast says **Already in my playlist**.
 
 The video is added directly through YouTube's own internal API, using your existing signed-in session.
 

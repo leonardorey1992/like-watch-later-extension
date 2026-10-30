@@ -223,8 +223,9 @@ function handleClick(e, list, menuRoot) {
     }
 
     addToPlaylist(videoId)
-        .then(() => {
-            showToast('Added to my playlist');
+        .then((result) => {
+            if (result === 'added') showToast('Added to my playlist');
+            else if (result === 'already') showToast('Already in my playlist');
             closeMenu(menuRoot);
         })
         .catch((err) => {
@@ -307,8 +308,10 @@ async function addToPlaylist(videoId) {
     if (!playlistId) {
         // chrome.runtime.openOptionsPage() is not available to content scripts.
         showToast('Set a playlist from the extension icon first', true);
-        return;
+        return null;
     }
+
+    if (await isInPlaylist(playlistId, videoId)) return 'already';
 
     const data = await innerTubeCall('browse/edit_playlist', {
         playlistId,
@@ -317,6 +320,33 @@ async function addToPlaylist(videoId) {
 
     if (data.error) {
         throw new Error(data.error.message || 'Failed to add video');
+    }
+    return 'added';
+}
+
+// Asks YouTube's own save-to-playlist data whether the video is already in the
+// playlist (same `selected` flag its "Save" dialog shows).
+// shortcut: only reads the first page of playlists, which covers all normal
+// accounts; paginate if someone has hundreds of playlists.
+async function isInPlaylist(playlistId, videoId) {
+    try {
+        const data = await innerTubeCall('playlist/get_add_to_playlist', { videoIds: [videoId] });
+        let selected = false;
+
+        (function scan(node) {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) {
+                node.forEach(scan);
+                return;
+            }
+            const id = node.playlistId || node.serviceEndpoint?.playlistEditEndpoint?.playlistId;
+            if (id === playlistId && node.selected === true) selected = true;
+            Object.values(node).forEach(scan);
+        })(data);
+
+        return selected;
+    } catch {
+        return false; // Fail open: still try the add.
     }
 }
 

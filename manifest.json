@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Add to Playlist",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Adds a one-click 'Add to <your playlist>' item to every YouTube video's 3-dot menu.",
   "permissions": [
     "storage"
